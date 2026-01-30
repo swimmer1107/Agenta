@@ -28,16 +28,10 @@ export function AgentProgressCard({ name, role, icon: Icon, status, progress, de
         if (s === "failed") return "Execution failed";
 
         // Evolutionary Phases
-        if (p < 30) {
-            return p % 2 === 0 ? "Analyzing inputs..." : "Interpreting requirements...";
-        }
-        if (p < 70) {
-            return p % 2 === 0 ? "Processing decisions..." : "Structuring approach...";
-        }
-        if (p < 99) {
-            return "Finalizing output...";
-        }
-        return "Finalizing output...";
+        if (p < 30) return "Initializing...";
+        if (p < 70) return p % 2 === 0 ? "Processing decisions..." : "Analyzing context...";
+        if (p < 99) return "Finalizing output...";
+        return "Completed successfully";
     };
 
     const statusText = getStatusText(visualProgress, status);
@@ -86,13 +80,9 @@ export function AgentProgressCard({ name, role, icon: Icon, status, progress, de
                             "bg-slate-900/40 border-slate-800/50 hover:border-slate-700"
             )}
         >
-            {/* Pulsing Status Glow */}
+            {/* Calm Status Background (No pulse) */}
             {isRunning && (
-                <motion.div
-                    animate={{ opacity: [0.1, 0.2, 0.1] }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                    className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16"
-                />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16" />
             )}
 
             <div className="flex items-start justify-between mb-4 relative z-10">
@@ -116,10 +106,14 @@ export function AgentProgressCard({ name, role, icon: Icon, status, progress, de
                     {isRunning ? (
                         <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20">
                             <Loader2 size={10} className="animate-spin text-blue-400" />
-                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Thinking</span>
+                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Active</span>
                         </div>
                     ) : isCompleted ? (
-                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                        >
                             <CheckCircle2 size={20} className="text-emerald-500" />
                         </motion.div>
                     ) : isFailed ? (

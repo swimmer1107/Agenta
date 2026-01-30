@@ -12,14 +12,13 @@ import clsx from "clsx";
 import { AgentCard } from "./AgentCard";
 import { AgentProgressCard } from "./AgentProgressCard";
 import { CodeBlock } from "../ui/CodeBlock";
-import { ConfettiEffect } from "../ui/ConfettiEffect";
 import { jsPDF } from "jspdf";
 import toast from "react-hot-toast";
 
 export function ExecutionView() {
     const {
         logs: rawLogs, plan, requirements, files, agentStatuses, agentProgress,
-        isCompleted, isProcessing, metadata, threadId
+        isCompleted, isProcessing, metadata, threadId, currentAgent
     } = useProject();
     const router = useRouter();
 
@@ -45,10 +44,30 @@ export function ExecutionView() {
     useEffect(() => {
         // Find new logs
         const newLogs = rawLogs.filter(log => !displayedLogs.includes(log) && !pendingLogsRef.current.includes(log));
+
         if (newLogs.length > 0) {
-            pendingLogsRef.current = [...pendingLogsRef.current, ...newLogs];
+            // Narrative Sync: Only queue logs belonging to the active agent or system
+            const agentMapping: Record<string, string> = {
+                manager: "Manager",
+                requirement: "Alice",
+                planner: "Bob",
+                executor: "Charlie",
+                qa: "Diana",
+                reporting: "Reporting"
+            };
+            const activeLabel = currentAgent ? agentMapping[currentAgent] : null;
+
+            const filteredLogs = newLogs.filter(log => {
+                if (log.startsWith("System:")) return true;
+                if (!activeLabel) return true;
+                return log.includes(`${activeLabel}:`);
+            });
+
+            if (filteredLogs.length > 0) {
+                pendingLogsRef.current = [...pendingLogsRef.current, ...filteredLogs];
+            }
         }
-    }, [rawLogs, displayedLogs]);
+    }, [rawLogs, displayedLogs, currentAgent]);
 
     useEffect(() => {
         if (isBooting || isHoveringLogs) return;
@@ -56,10 +75,15 @@ export function ExecutionView() {
         const interval = setInterval(() => {
             if (pendingLogsRef.current.length > 0) {
                 const nextLog = pendingLogsRef.current[0];
+
+                // Narrative Sync: Only show logs if they belong to the current agent or system
+                // Or if we want strict sequential logs, we just pop them slowly.
+                // The requirement is "Logs appear ONLY for the currently active agent".
+
                 pendingLogsRef.current = pendingLogsRef.current.slice(1);
                 setDisplayedLogs(prev => [...prev, nextLog]);
             }
-        }, Math.floor(Math.random() * (600 - 300 + 1)) + 300);
+        }, Math.floor(Math.random() * (700 - 400 + 1)) + 400); // 400-700ms
 
         return () => clearInterval(interval);
     }, [isBooting, isHoveringLogs]);
@@ -112,21 +136,30 @@ export function ExecutionView() {
             return;
         }
 
-        const totalProgress = AGENTS.reduce((acc, agent) => acc + (agentProgress[agent.id] || 0), 0);
-        const targetProgress = Math.round(totalProgress / AGENTS.length);
+        // Global Progress is derived from agent milestones + active progress
+        const completedCount = AGENTS.filter(a => agentStatuses[a.id] === "completed").length;
+        const activeAgentId = AGENTS.find(a => agentStatuses[a.id] === "running")?.id;
+        const activeProgress = activeAgentId ? (agentProgress[activeAgentId] || 0) : 0;
+
+        // Base progress from completed agents (e.g., each of 6 agents is 16.6%)
+        const baseProgress = (completedCount / AGENTS.length) * 100;
+        // Add a fraction of the current agent's progress
+        const contribution = (activeProgress / 100) * (100 / AGENTS.length);
+
+        const targetProgress = Math.round(baseProgress + contribution);
 
         const timer = setInterval(() => {
             setVisualGlobalProgress(prev => {
                 if (prev >= targetProgress) return prev;
-                // Move in smooth waves, lagging slightly
+                // Move in very small, calm increments
                 const diff = targetProgress - prev;
-                const increment = Math.max(1, Math.floor(diff * 0.1));
+                const increment = Math.max(1, Math.floor(diff * 0.05));
                 return Math.min(prev + increment, 99);
             });
-        }, 100);
+        }, 200);
 
         return () => clearInterval(timer);
-    }, [agentProgress, isCompleted]);
+    }, [agentProgress, agentStatuses, isCompleted]);
 
     const globalProgress = visualGlobalProgress;
 
@@ -151,7 +184,6 @@ export function ExecutionView() {
 
     return (
         <div className="flex h-[calc(100vh-120px)] gap-6 overflow-hidden animate-in fade-in duration-700">
-            <ConfettiEffect trigger={showConfetti} />
 
             {/* MAIN CONTENT AREA */}
             <div className="flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
@@ -363,8 +395,8 @@ export function ExecutionView() {
                             <CheckCircle2 size={24} />
                         </div>
                         <div>
-                            <h4 className="font-black text-white text-sm tracking-tight">Orchestration Successful</h4>
-                            <p className="text-[11px] text-slate-400 font-medium">All agents finished execution</p>
+                            <h4 className="font-black text-white text-sm tracking-tight">Execution completed successfully</h4>
+                            <p className="text-[11px] text-slate-400 font-medium">All agents finished orchestration</p>
                         </div>
                         {/* Soft Glow */}
                         <div className="absolute inset-0 bg-blue-500/5 rounded-3xl pointer-events-none" />
