@@ -1,0 +1,23 @@
+{
+    "buildCommand": "npm run build",
+    "devCommand": "npm run dev",
+    "installCommand": "npm install",
+    "framework": "nextjs",
+    "env": {
+        "OPENAI_API_KEY": "@openai-api-key",
+        "MONGODB_URI": "@mongodb-uri",
+        "NEXTAUTH_URL": "@nextauth-url",
+        "NEXTAUTH_SECRET": "@nextauth-secret"
+    },
+    "headers": [
+        {
+            "source": "/api/(.*)",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "no-cache, no-store, must-revalidate"
+                }
+            ]
+        }
+    ]
+}

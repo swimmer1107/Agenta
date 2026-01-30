@@ -9,17 +9,35 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@langchain/core": "^1.1.17",
+    "@langchain/langgraph": "^1.1.2",
+    "@langchain/openai": "^1.2.3",
+    "ai": "^6.0.62",
+    "bcryptjs": "^2.4.3",
+    "clsx": "^2.1.1",
+    "docx": "^9.0.2",
+    "framer-motion": "^12.29.2",
+    "jspdf": "^2.5.2",
+    "lucide-react": "^0.563.0",
+    "mongodb": "^6.12.0",
     "next": "16.1.6",
+    "next-auth": "^4.24.11",
+    "party-js": "^2.2.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-hot-toast": "^2.4.1",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "mongodb-memory-server": "^11.0.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
