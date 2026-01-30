@@ -18,7 +18,7 @@ import toast from "react-hot-toast";
 
 export function ExecutionView() {
     const {
-        logs, plan, requirements, files, agentStatuses, agentProgress,
+        logs: rawLogs, plan, requirements, files, agentStatuses, agentProgress,
         isCompleted, isProcessing, metadata, threadId
     } = useProject();
     const router = useRouter();
@@ -29,12 +29,63 @@ export function ExecutionView() {
     const [showConfetti, setShowConfetti] = useState(false);
     const [shareDropdownOpen, setShareDropdownOpen] = useState(false);
 
+    // DELIBERATE BOOT LOGIC
+    const [isBooting, setIsBooting] = useState(true);
+    useEffect(() => {
+        const delay = Math.floor(Math.random() * (900 - 600 + 1)) + 600;
+        const timer = setTimeout(() => setIsBooting(false), delay);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // LOG PACING LOGIC
+    const [displayedLogs, setDisplayedLogs] = useState<string[]>([]);
+    const pendingLogsRef = useRef<string[]>([]);
+    const [isHoveringLogs, setIsHoveringLogs] = useState(false);
+
+    useEffect(() => {
+        // Find new logs
+        const newLogs = rawLogs.filter(log => !displayedLogs.includes(log) && !pendingLogsRef.current.includes(log));
+        if (newLogs.length > 0) {
+            pendingLogsRef.current = [...pendingLogsRef.current, ...newLogs];
+        }
+    }, [rawLogs, displayedLogs]);
+
+    useEffect(() => {
+        if (isBooting || isHoveringLogs) return;
+
+        const interval = setInterval(() => {
+            if (pendingLogsRef.current.length > 0) {
+                const nextLog = pendingLogsRef.current[0];
+                pendingLogsRef.current = pendingLogsRef.current.slice(1);
+                setDisplayedLogs(prev => [...prev, nextLog]);
+            }
+        }, Math.floor(Math.random() * (600 - 300 + 1)) + 300);
+
+        return () => clearInterval(interval);
+    }, [isBooting, isHoveringLogs]);
+
+    // COMPLETION ALERT LOGIC
+    const [showAlert, setShowAlert] = useState(false);
+    useEffect(() => {
+        if (isCompleted && !showAlert) {
+            const timer = setTimeout(() => setShowAlert(true), 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [isCompleted, showAlert]);
+
+    useEffect(() => {
+        if (showAlert) {
+            const timer = setTimeout(() => setShowAlert(false), 4500);
+            return () => clearTimeout(timer);
+        }
+    }, [showAlert]);
+
     // Auto-scroll logs
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollIntoView({ behavior: "smooth" });
         }
-    }, [logs]);
+    }, [displayedLogs]);
 
     // Trigger confetti on completion
     useEffect(() => {
@@ -223,8 +274,8 @@ export function ExecutionView() {
                             <AgentProgressCard
                                 key={agent.id}
                                 {...agent}
-                                status={agentStatuses[agent.id] || "idle"}
-                                progress={agentProgress[agent.id] || 0}
+                                status={isBooting ? "idle" : agentStatuses[agent.id] || "idle"}
+                                progress={isBooting ? 0 : agentProgress[agent.id] || 0}
                             />
                         ))}
                     </div>
@@ -241,8 +292,8 @@ export function ExecutionView() {
                             <AgentProgressCard
                                 key={agent.id}
                                 {...agent}
-                                status={agentStatuses[agent.id] || "idle"}
-                                progress={agentProgress[agent.id] || 0}
+                                status={isBooting ? "idle" : agentStatuses[agent.id] || "idle"}
+                                progress={isBooting ? 0 : agentProgress[agent.id] || 0}
                             />
                         ))}
                     </div>
@@ -267,9 +318,12 @@ export function ExecutionView() {
                     </button>
                 </div>
 
-                <div className="flex-1 bg-black/40 border border-slate-800/50 rounded-3xl p-4 overflow-hidden relative">
+                <div className="flex-1 bg-black/40 border border-slate-800/50 rounded-3xl p-4 overflow-hidden relative"
+                    onMouseEnter={() => setIsHoveringLogs(true)}
+                    onMouseLeave={() => setIsHoveringLogs(false)}
+                >
                     <div className="h-full overflow-y-auto custom-scrollbar space-y-3 font-mono text-[11px]">
-                        {logs.map((log, i) => (
+                        {displayedLogs.map((log: string, i: number) => (
                             <div key={i} className="flex gap-3 text-slate-300 leading-relaxed border-b border-white/5 pb-2">
                                 <span className="text-slate-600 select-none shrink-0">{(i + 1).toString().padStart(3, '0')}</span>
                                 <span className={clsx(
@@ -296,6 +350,27 @@ export function ExecutionView() {
                     <Terminal size={20} />
                 </button>
             )}
+            {/* COMPLETION ALERT */}
+            <AnimatePresence>
+                {showAlert && (
+                    <motion.div
+                        initial={{ opacity: 0, x: 100 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 100 }}
+                        className="fixed top-24 right-8 z-[100] w-80 p-6 rounded-3xl bg-slate-900/80 border border-blue-500/30 backdrop-blur-2xl shadow-[0_20px_50px_rgba(37,99,235,0.2)] flex items-center gap-4"
+                    >
+                        <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 border border-blue-500/30">
+                            <CheckCircle2 size={24} />
+                        </div>
+                        <div>
+                            <h4 className="font-black text-white text-sm tracking-tight">Orchestration Successful</h4>
+                            <p className="text-[11px] text-slate-400 font-medium">All agents finished execution</p>
+                        </div>
+                        {/* Soft Glow */}
+                        <div className="absolute inset-0 bg-blue-500/5 rounded-3xl pointer-events-none" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

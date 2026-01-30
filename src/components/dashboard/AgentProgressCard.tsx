@@ -26,10 +26,17 @@ export function AgentProgressCard({ name, role, icon: Icon, status, progress, de
     const getStatusText = (p: number, s: string) => {
         if (s === "completed") return "Completed successfully";
         if (s === "failed") return "Execution failed";
-        if (p < 20) return "Initializing context...";
-        if (p < 45) return "Analyzing inputs...";
-        if (p < 70) return "Reasoning through constraints...";
-        if (p < 85) return "Formulating response...";
+
+        // Evolutionary Phases
+        if (p < 30) {
+            return p % 2 === 0 ? "Analyzing inputs..." : "Interpreting requirements...";
+        }
+        if (p < 70) {
+            return p % 2 === 0 ? "Processing decisions..." : "Structuring approach...";
+        }
+        if (p < 99) {
+            return "Finalizing output...";
+        }
         return "Finalizing output...";
     };
 
@@ -43,24 +50,25 @@ export function AgentProgressCard({ name, role, icon: Icon, status, progress, de
 
         if (!isRunning) return;
 
-        // Visual smoothing interval
+        // Visual smoothing interval - Deliberate & Non-linear
         const timer = setInterval(() => {
-            const now = Date.now();
-            if (now - lastUpdateRef.current < 400) return; // Randomized delay simulation
-
             setVisualProgress(prev => {
-                // If backend progress is significantly ahead, catch up faster
-                if (progress > prev + 10) return prev + 2;
+                // If backend progress is significantly ahead, catch up faster but still smooth
+                if (progress > prev + 15) return prev + 5;
 
-                // Slow down near 95%
-                if (prev >= 95) return 95;
+                // Hit 99% cap until real completion
+                if (prev >= 99) return 99;
 
-                // Random walk 1-2%
-                const increment = Math.random() > 0.7 ? 2 : 1;
-                lastUpdateRef.current = now;
-                return Math.min(prev + increment, 95);
+                // Randomized non-linear increments (3-8%)
+                const increment = Math.floor(Math.random() * (8 - 3 + 1)) + 3;
+
+                // Slow down toward the end to feel intentional
+                const multiplier = prev > 70 ? 0.5 : 1;
+                const finalIncrement = Math.max(1, Math.round(increment * multiplier));
+
+                return Math.min(prev + finalIncrement, 99);
             });
-        }, 500);
+        }, Math.floor(Math.random() * (500 - 300 + 1)) + 300); // 300-500ms interval
 
         return () => clearInterval(timer);
     }, [isRunning, progress, isCompleted, isFailed]);
