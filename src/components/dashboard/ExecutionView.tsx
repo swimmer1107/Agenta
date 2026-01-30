@@ -302,14 +302,27 @@ export function ExecutionView() {
                         <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Core Swarm</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {AGENTS.filter(a => a.core).map(agent => (
-                            <AgentProgressCard
-                                key={agent.id}
-                                {...agent}
-                                status={isBooting ? "idle" : agentStatuses[agent.id] || "idle"}
-                                progress={isBooting ? 0 : agentProgress[agent.id] || 0}
-                            />
-                        ))}
+                        {AGENTS.filter(a => a.core).map((agent, index) => {
+                            const rawStatus = agentStatuses[agent.id] || "idle";
+
+                            // Visual Sequential Lock: 
+                            // Only allow "running" status if all previous core agents are "completed"
+                            let visualStatus = rawStatus;
+                            if (rawStatus === "running" && index > 0) {
+                                const previousAgents = AGENTS.filter(a => a.core).slice(0, index);
+                                const allPreviousDone = previousAgents.every(pa => agentStatuses[pa.id] === "completed");
+                                if (!allPreviousDone) visualStatus = "idle";
+                            }
+
+                            return (
+                                <AgentProgressCard
+                                    key={agent.id}
+                                    {...agent}
+                                    status={isBooting ? "idle" : visualStatus}
+                                    progress={isBooting ? 0 : agentProgress[agent.id] || 0}
+                                />
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -320,14 +333,32 @@ export function ExecutionView() {
                         <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Support Sytems</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 opacity-80 scale-95 origin-top-left">
-                        {AGENTS.filter(a => !a.core).map(agent => (
-                            <AgentProgressCard
-                                key={agent.id}
-                                {...agent}
-                                status={isBooting ? "idle" : agentStatuses[agent.id] || "idle"}
-                                progress={isBooting ? 0 : agentProgress[agent.id] || 0}
-                            />
-                        ))}
+                        {AGENTS.filter(a => !a.core).map((agent, index) => {
+                            const rawStatus = agentStatuses[agent.id] || "idle";
+
+                            // Visual Sequential Lock for Secondary Agents:
+                            // They only run after all CORE agents are completed.
+                            const allCoreDone = AGENTS.filter(a => a.core).every(ca => agentStatuses[ca.id] === "completed");
+
+                            let visualStatus = rawStatus;
+                            if (rawStatus === "running" && !allCoreDone) visualStatus = "idle";
+
+                            // Also check previous secondary agents
+                            if (visualStatus === "running" && index > 0) {
+                                const previousSecondary = AGENTS.filter(a => !a.core).slice(0, index);
+                                const allPrevSecondaryDone = previousSecondary.every(pa => agentStatuses[pa.id] === "completed");
+                                if (!allPrevSecondaryDone) visualStatus = "idle";
+                            }
+
+                            return (
+                                <AgentProgressCard
+                                    key={agent.id}
+                                    {...agent}
+                                    status={isBooting ? "idle" : visualStatus}
+                                    progress={isBooting ? 0 : agentProgress[agent.id] || 0}
+                                />
+                            );
+                        })}
                     </div>
                 </div>
             </div>
